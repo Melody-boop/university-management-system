@@ -1,0 +1,26 @@
+{% extends 'ums/base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block breadcrumb %}{{ title }}{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div><div class="eyebrow">CAMPUS RECORDS</div><h1>{{ title }}</h1><p>Search, review, and manage {{ title|lower }}.</p></div>
+  <div class="heading-actions"><a class="btn btn-outline-secondary" href="{% url 'csv-report' slug %}" title="Export CSV"><i class="bi bi-download"></i><span> Export</span></a>{% if can_create %}<a class="btn btn-primary" href="{% url 'record-create' slug %}"><i class="bi bi-plus-lg"></i> Add record</a>{% endif %}</div>
+</section>
+<section class="panel list-panel">
+  <form class="search-bar" method="get"><i class="bi bi-search"></i><input type="search" name="q" value="{{ query }}" placeholder="Search {{ title|lower }}"><button class="btn btn-outline-secondary" type="submit">Search</button>{% if query %}<a class="text-link" href="{% url 'record-list' slug %}">Clear</a>{% endif %}</form>
+  <div class="table-responsive"><table class="table data-table"><thead><tr>{% for field in fields %}<th>{{ field.verbose_name|capfirst }}</th>{% endfor %}<th class="text-end">Actions</th></tr></thead><tbody>
+  {% for record, values in table_rows %}
+    <tr>{% for value in values %}<td>{% if forloop.first and slug == 'students' %}<a class="record-link" href="{% url 'student-detail' record.pk %}">{{ value }}</a>{% else %}{{ value|default:'—' }}{% endif %}</td>{% endfor %}
+      <td class="text-end"><div class="row-actions">
+        {% if slug == 'registrations' and record.status == 'pending' and request.user.role != 'lecturer' %}<form method="post" action="{% url 'approve-registration' record.pk %}">{% csrf_token %}<input type="hidden" name="status" value="approved"><button class="icon-button" title="Approve registration"><i class="bi bi-check2"></i></button></form><form method="post" action="{% url 'approve-registration' record.pk %}">{% csrf_token %}<input type="hidden" name="status" value="rejected"><button class="icon-button" title="Reject registration"><i class="bi bi-x-lg"></i></button></form>{% endif %}
+        {% if slug == 'results' and not record.published and request.user.role != 'lecturer' %}<form method="post" action="{% url 'publish-result' record.pk %}">{% csrf_token %}<button class="icon-button" title="Publish result"><i class="bi bi-send"></i></button></form>{% endif %}
+        {% if slug == 'books' and request.user.role == 'student' %}<form method="post" action="{% url 'borrow-book' record.pk %}">{% csrf_token %}<button class="icon-button" title="Borrow book" {% if record.available_copies < 1 %}disabled{% endif %}><i class="bi bi-bookmark-plus"></i></button></form>{% endif %}
+        {% if slug == 'book-loans' and not record.returned_at %}<form method="post" action="{% url 'return-book' record.pk %}">{% csrf_token %}<button class="icon-button" title="Return book"><i class="bi bi-arrow-return-left"></i></button></form>{% endif %}
+        {% if slug == 'notifications' and not record.read_at %}<form method="post" action="{% url 'notification-read' record.pk %}">{% csrf_token %}<button class="icon-button" title="Mark as read"><i class="bi bi-check2"></i></button></form>{% endif %}
+        {% if slug != 'audit-log' and request.user.role != 'student' %}<a class="icon-button" href="{% url 'record-edit' slug record.pk %}" title="Edit record"><i class="bi bi-pencil"></i></a>{% endif %}
+      </div></td>
+    </tr>
+  {% empty %}<tr><td class="empty-table" colspan="{{ fields|length|add:1 }}">No {{ title|lower }} found{% if query %} for “{{ query }}”{% endif %}.</td></tr>{% endfor %}
+  </tbody></table></div><div class="table-caption">Showing up to 100 records</div>
+</section>
+{% endblock %}
